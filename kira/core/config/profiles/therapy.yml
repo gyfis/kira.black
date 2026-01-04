@@ -1,0 +1,88 @@
+profile_id: therapy
+extends: base
+version: "1.0.0"
+
+meta:
+  name: "Therapy Session"
+  domain: therapy
+  description: "Optimized for therapeutic conversations with empathetic observation"
+
+perception:
+  models:
+    pose_estimation:
+      priority: low
+
+state:
+  max_entities: 2
+  extensions:
+    engagement:
+      track_eye_contact: true
+      track_attentiveness: true
+
+events:
+  enabled_categories:
+    - entity_lifecycle
+    - engagement
+  custom_events:
+    - id: extended_stillness
+      type: extended_stillness
+      category: engagement
+      severity: info
+      trigger:
+        type: duration
+        signal: entities.0.motion.motion_magnitude
+        condition: "< 0.05"
+        duration_ms: 30000
+      cooldown_ms: 60000
+    - id: significant_movement
+      type: significant_movement
+      category: engagement
+      severity: debug
+      trigger:
+        type: threshold
+        signal: entities.0.motion.motion_magnitude
+        condition: "> 0.4"
+      cooldown_ms: 5000
+
+output:
+  cadence_hz: 1.0
+  llm:
+    persona:
+      role: "supportive therapeutic companion"
+      tone: "warm, empathetic, patient, non-judgmental"
+      expertise: "active listening, emotional support, mindfulness"
+    instructions: |
+      You are a supportive presence during a therapy or reflection session.
+      
+      Your role:
+      - Observe quietly and supportively
+      - Only speak when you notice something that might be helpful
+      - Never interrupt deep thought or reflection
+      - Reflect back what you observe without judgment
+      - Encourage self-compassion
+      
+      What to notice:
+      - Extended stillness (may indicate deep thought or distress)
+      - Sudden movements (may indicate agitation)
+      - Posture changes (may indicate emotional shifts)
+      
+      Always prioritize the person's emotional safety and autonomy.
+    response_constraints:
+      max_length: 100
+      avoid:
+        - diagnoses
+        - direct advice
+        - assumptions about feelings
+        - interrupting silence
+      prefer:
+        - gentle observations
+        - open questions
+        - validating presence
+  interaction_rules:
+    speak_when:
+      - event: extended_stillness
+        delay_ms: 5000
+        condition: "severity >= info"
+    do_not_speak_when:
+      - condition: time_since_last_response_ms < 15000
+      - condition: user_is_speaking

@@ -1,0 +1,166 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require 'optparse'
+require_relative '../lib/kira'
+
+options = {
+  session: nil,
+  perception: true,
+  verbose: false,
+  persona: nil
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: kira [options]"
+  
+  opts.on("-s", "--session NAME", "Session name (default: generates new)") do |s|
+    options[:session] = s
+  end
+  
+  opts.on("-p", "--persona PERSONA", "Persona seed (e.g., 'friendly therapist')") do |p|
+    options[:persona] = p
+  end
+  
+  opts.on("--no-perception", "Disable camera/microphone perception") do
+    options[:perception] = false
+  end
+  
+  opts.on("-v", "--verbose", "Enable verbose logging") do
+    options[:verbose] = true
+  end
+  
+  opts.on("-h", "--help", "Show this help") do
+    puts opts
+    exit
+  end
+end.parse!
+
+# Generate session name if not provided
+session_id = options[:session] || "kira-#{Time.now.strftime('%Y%m%d-%H%M%S')}"
+
+puts "=" * 60
+puts "  KIRA - Perceptive AI Companion"
+puts "=" * 60
+puts
+puts "  Session: #{session_id}"
+puts "  Perception: #{options[:perception] ? 'enabled' : 'disabled'}"
+puts
+
+# Prompt for persona if not provided
+unless options[:persona]
+  print "  Enter persona (or press Enter for default): "
+  input = $stdin.gets&.strip
+  options[:persona] = input unless input.nil? || input.empty?
+end
+
+if options[:persona]
+  puts "  Persona: #{options[:persona]}"
+else
+  puts "  Persona: default (helpful assistant)"
+  options[:persona] = "You are a helpful, friendly AI assistant. You observe and comment on interesting things you see, but don't over-talk."
+end
+
+puts
+puts "  Press Ctrl+C to stop"
+puts "=" * 60
+puts
+
+# Set up logging
+SemanticLogger.default_level = options[:verbose] ? :debug : :info
+
+# Create orchestrator with new architecture
+orchestrator = Kira::Orchestrator.new(
+  session_id: session_id,
+  persona: options[:persona]
+)
+
+# Set up perception signal source if enabled
+perception_source = nil
+if options[:perception]
+  perception_source = Kira::Perception::SignalSource.new
+  orchestrator.add_signal_source(perception_source)
+  orchestrator.set_tts(perception_source)
+end
+
+# Register callbacks
+orchestrator.on_speak do |text|
+  puts
+  puts "\e[36m[KIRA]\e[0m #{text}"
+  puts
+end
+
+orchestrator.on_signal do |signal|
+  if options[:verbose]
+    puts "\e[90m[signal:#{signal.type}] #{signal.content[0..80]}...\e[0m"
+  end
+end
+
+orchestrator.on_decision do |info|
+  decision = info[:decision].to_s.upcase
+  reasoning = info[:reasoning] || ''
+  signal_type = info[:signal_type]
+  
+  # Color based on decision
+  color = case decision
+          when 'SPEAK', 'URGENT' then "\e[32m"  # green
+          else "\e[90m"  # gray
+          end
+  reset = "\e[0m"
+  dim = "\e[90m"
+  
+  # Build context string
+  parts = []
+  parts << signal_type.to_s
+  
+  content_preview = info[:content]
+  parts << "\"#{content_preview}\"" if content_preview && content_preview.length > 5
+  
+  silence = info[:seconds_since_spoke]
+  if silence.nil?
+    parts << "first"
+  else
+    parts << "#{silence}s silent"
+  end
+  
+  parts << "session:#{info[:session_seconds]}s" if info[:session_seconds]
+  
+  context_str = parts.compact.join(' | ')
+  
+  # Print formatted line
+  puts "#{color}[#{decision}]#{reset} #{dim}#{context_str}#{reset}"
+  puts "         #{reasoning}" unless reasoning.empty?
+end
+
+orchestrator.on_error do |message|
+  puts "\e[31m[ERROR] #{message}\e[0m"
+end
+
+# Handle Ctrl+C gracefully
+$shutdown_requested = false
+
+trap('INT') do
+  puts
+  puts "Shutting down..."
+  $shutdown_requested = true
+end
+
+trap('TERM') do
+  $shutdown_requested = true
+end
+
+puts "Starting Kira (this may take ~10s for model warmup)..."
+puts
+
+# Start!
+orchestrator.start
+
+# Keep running until shutdown requested
+loop do
+  sleep 0.5
+  if $shutdown_requested
+    orchestrator.stop
+    break
+  end
+end

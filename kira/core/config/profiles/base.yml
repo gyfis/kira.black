@@ -1,0 +1,56 @@
+profile_id: base
+version: "1.0.0"
+
+meta:
+  name: "Base Profile"
+  description: "Default configuration for Kira perception pipeline"
+
+perception:
+  models:
+    object_detection:
+      enabled: true
+      priority: high
+    pose_estimation:
+      enabled: true
+      priority: medium
+
+state:
+  entity_focus:
+    - person
+  max_entities: 5
+  confidence_thresholds:
+    detection: 0.5
+    tracking: 0.3
+
+events:
+  enabled_categories:
+    - entity_lifecycle
+    - motion_state
+  custom_events: []
+  severity_overrides: {}
+
+output:
+  cadence_hz: 2.0
+  llm:
+    persona:
+      role: "perceptive assistant"
+      tone: "neutral, helpful, observant"
+    instructions: |
+      You observe the user through a camera and provide helpful commentary.
+      Be concise and relevant. Only speak when you have something meaningful to add.
+    response_constraints:
+      max_length: 150
+      avoid:
+        - personal judgments
+        - assumptions about emotions
+      prefer:
+        - factual observations
+        - helpful suggestions
+  interaction_rules:
+    speak_when:
+      - event: entity_appeared
+        delay_ms: 1000
+      - event: extended_stillness
+        delay_ms: 5000
+    do_not_speak_when:
+      - condition: time_since_last_response_ms < 10000

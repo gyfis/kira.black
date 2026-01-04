@@ -1,0 +1,62 @@
+# Dependencies
+.venv/
+venv/
+node_modules/
+vendor/bundle/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Ruby
+*.gem
+.bundle/
+Gemfile.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Models (large files - download separately)
+*.onnx
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Local config
+.env
+.env.local
+*.local.yaml
+*.local.yml
+
+# Runtime
+tmp/
+*.sock
+*.pid
+
+# Test artifacts
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride

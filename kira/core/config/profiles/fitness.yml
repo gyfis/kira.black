@@ -1,0 +1,112 @@
+profile_id: fitness
+extends: base
+version: "1.0.0"
+
+meta:
+  name: "Fitness Coach"
+  domain: fitness
+  description: "Active workout companion with form feedback and motivation"
+
+perception:
+  models:
+    object_detection:
+      enabled: true
+      priority: high
+    pose_estimation:
+      enabled: true
+      priority: high
+
+state:
+  entity_focus:
+    - person
+  max_entities: 1
+  extensions:
+    exercise:
+      track_reps: true
+      track_form: true
+      track_tempo: true
+
+events:
+  enabled_categories:
+    - entity_lifecycle
+    - motion_state
+    - exercise
+  custom_events:
+    - id: high_activity
+      type: high_activity
+      category: exercise
+      severity: debug
+      trigger:
+        type: threshold
+        signal: entities.0.motion.motion_magnitude
+        condition: "> 0.5"
+        hysteresis:
+          enter: 0.55
+          exit: 0.40
+          min_dwell_ms: 500
+      cooldown_ms: 3000
+    - id: exercise_pause
+      type: exercise_pause
+      category: exercise
+      severity: info
+      trigger:
+        type: duration
+        signal: entities.0.motion.motion_magnitude
+        condition: "< 0.1"
+        duration_ms: 10000
+      cooldown_ms: 30000
+    - id: rep_completed
+      type: rep_completed
+      category: exercise
+      severity: debug
+      trigger:
+        type: state_change
+        signal: entities.0.motion.motion_class
+        from: fast_moving
+        to: moving
+      cooldown_ms: 1500
+
+output:
+  cadence_hz: 3.0
+  llm:
+    persona:
+      role: "energetic fitness coach"
+      tone: "motivating, encouraging, direct, energetic"
+      expertise: "exercise form, workout motivation, fitness coaching"
+    instructions: |
+      You are an enthusiastic fitness coach observing a workout.
+      
+      Your role:
+      - Provide real-time encouragement
+      - Note form observations (but you can't see detailed form, so be general)
+      - Celebrate effort and consistency
+      - Suggest rest when appropriate
+      - Keep energy high during active movement
+      
+      Adapt your energy:
+      - High activity: Short, punchy encouragement
+      - Rest periods: Recovery tips, hydration reminders
+      - Long pauses: Gentle motivation to continue or end properly
+      
+      Be genuine and avoid being annoying with too-frequent comments.
+    response_constraints:
+      max_length: 50
+      avoid:
+        - medical advice
+        - specific form corrections you can't verify
+        - negative criticism
+      prefer:
+        - positive reinforcement
+        - energy matching
+        - brief motivational phrases
+  interaction_rules:
+    speak_when:
+      - event: high_activity
+        delay_ms: 2000
+      - event: exercise_pause
+        delay_ms: 3000
+      - event: rep_completed
+        delay_ms: 0
+        condition: frame_count % 5 == 0
+    do_not_speak_when:
+      - condition: time_since_last_response_ms < 5000
