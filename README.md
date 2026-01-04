@@ -1,5 +1,7 @@
 # Kira
 
+### [kira.black](https://kira.black)
+
 **An AI that perceives.** Unlike chatbots that wait for you to type, Kira sees through your camera, hears through your microphone, and decides when to speak up.
 
 Built on [OpenCode](https://opencode.ai). Extensible by design.
@@ -177,5 +179,5 @@ MIT License - see [LICENSE](LICENSE)
 
 ## Links
 
+- [kira.black](https://kira.black) - Project homepage
 - [OpenCode](https://opencode.ai) - The AI coding assistant Kira is built on
-- [kira.black](https://kira.black) - Project homepage (coming soon)
